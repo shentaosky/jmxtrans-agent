@@ -33,6 +33,7 @@ import java.net.HttpURLConnection;
 import java.net.InetAddress;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.net.URLConnection;
 import java.net.UnknownHostException;
 import java.util.Map;
 
@@ -70,6 +71,34 @@ public class LineProtocalOutputWriter extends AbstractOutputWriter implements Ou
 		logger.log(getInfoLevel(),
 				"LineProtocalOutputWriter is configured with " + lineProtocalOutputWriter + ", metricPathPrefix="
 						+ metricPathPrefix + ", socketConnectTimeoutInMillis=" + socketConnectTimeoutInMillis);
+		int respondCode = createDatabase();
+		if (respondCode != 200 || respondCode != 204) {
+			logger.log(getInfoLevel(),
+					"LineProtocalOutputWriter is Fail to  create database with respondCode: " + respondCode
+							+ ", metricPathPrefix=" + metricPathPrefix + ", socketConnectTimeoutInMillis="
+							+ socketConnectTimeoutInMillis);
+		}
+	}
+
+	@SuppressWarnings("finally")
+	protected int createDatabase() {
+		String databaseName = locolSettings.get("DataBase");
+		HttpURLConnection urlConnection = null;
+		int responseCode = 0;
+		String createDatabase = "http://10.16.64.2:8086" + "/query?q=CREATE+DATABASE+" + databaseName;
+		try {
+			URL url1 = new URL(createDatabase);
+			urlConnection = (HttpURLConnection) url1.openConnection();
+			urlConnection.connect();
+			responseCode = ((HttpURLConnection) urlConnection).getResponseCode();
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+			return 0;
+		} finally {
+			urlConnection.disconnect();
+			return responseCode;
+		}
 	}
 
 	/**
@@ -107,22 +136,16 @@ public class LineProtocalOutputWriter extends AbstractOutputWriter implements Ou
 				+ "/write?db=ServersData";
 		OutputStream outputStream = null;
 		OutputStreamWriter outputStreamWriter = null;
-		StringBuffer tag = new StringBuffer(",host=" + InetAddress.getLocalHost().getHostName() + ",IP="
-				+ InetAddress.getLocalHost().getHostAddress());
+		StringBuffer tag = new StringBuffer("," + locolSettings.get("tags"));
 		String Value = null;
 		if (value instanceof String) {
 			Value = "\"" + value + "\"";
 		} else {
 			Value = value.toString();
 		}
-		for (String key : locolSettings.keySet()) {
-			if (SETTING_HOST.equals(key) || SETTING_PORT.equals(key) || SETTING_NAME_PREFIX.equals(key)) {
-				continue;
-			}
-			tag.append("," + key + "=" + locolSettings.get(key));
-		}
+
 		String msg = metricName.replace('.', '_') + tag + " " + " value=" + Value + "\n";
-		System.out.println("MSG" + msg);
+		System.out.println("MSG:" + msg);
 		try {
 			url = new URL(urlstr);
 		} catch (MalformedURLException e) {
