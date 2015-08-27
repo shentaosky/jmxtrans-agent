@@ -31,7 +31,7 @@
     <groupId>org.jmxtrans.agent</groupId>
     <artifactId>jmxtrans-agent</artifactId>
     <packaging>jar</packaging>
-    <version>1.1.1-SNAPSHOT</version>
+    <version>1.1.1-transwarp</version>
     <name>JMX metrics exporter agent</name>
     <url>https://github.com/jmxtrans/jmxtrans-agent</url>
     <scm>
@@ -94,7 +94,7 @@
                     <target>1.7</target>
                 </configuration>
             </plugin>
-            <plugin>
+            <!--plugin>
                 <groupId>org.codehaus.mojo</groupId>
                 <artifactId>findbugs-maven-plugin</artifactId>
                 <version>3.0.1</version>
@@ -106,7 +106,7 @@
                         </goals>
                     </execution>
                 </executions>
-            </plugin>
+            </plugin-->
         </plugins>
     </build>
     <developers>

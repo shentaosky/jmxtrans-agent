@@ -56,9 +56,11 @@ public class LineProtocalOutputWriter extends AbstractOutputWriter implements Ou
 	protected HostAndPort lineProtocalOutputWriter;
 	private URL url;
 	private int socketConnectTimeoutInMillis = SETTING_SOCKET_CONNECT_TIMEOUT_IN_MILLIS_DEFAULT_VALUE;
+	private Map<String, String> locolSettings = null;
 
 	@Override
 	public void postConstruct(Map<String, String> settings) {
+		locolSettings = settings;
 		lineProtocalOutputWriter = new HostAndPort(getString(settings, SETTING_HOST),
 				getInt(settings, SETTING_PORT, SETTING_PORT_DEFAULT_VALUE));
 		metricPathPrefix = getString(settings, SETTING_NAME_PREFIX, null);
@@ -105,8 +107,21 @@ public class LineProtocalOutputWriter extends AbstractOutputWriter implements Ou
 				+ "/write?db=ServersData";
 		OutputStream outputStream = null;
 		OutputStreamWriter outputStreamWriter = null;
-		String msg = metricName.replace('.', '_') + ",host=" + InetAddress.getLocalHost().getHostName() + ",IP="
-				+ InetAddress.getLocalHost().getHostAddress() + " value=" + value + "\n";
+		StringBuffer tag = new StringBuffer(",host=" + InetAddress.getLocalHost().getHostName() + ",IP="
+				+ InetAddress.getLocalHost().getHostAddress());
+		String Value = null;
+		if (value instanceof String) {
+			Value = "\"" + value + "\"";
+		} else {
+			Value = value.toString();
+		}
+		for (String key : locolSettings.keySet()) {
+			if (SETTING_HOST.equals(key) || SETTING_PORT.equals(key) || SETTING_NAME_PREFIX.equals(key)) {
+				continue;
+			}
+			tag.append("," + key + "=" + locolSettings.get(key));
+		}
+		String msg = metricName.replace('.', '_') + tag + " " + " value=" + Value + "\n";
 		System.out.println("MSG" + msg);
 		try {
 			url = new URL(urlstr);
@@ -120,7 +135,6 @@ public class LineProtocalOutputWriter extends AbstractOutputWriter implements Ou
 			urlConnection = (HttpURLConnection) url.openConnection();
 			HttpURLConnection httpURLConnection = (HttpURLConnection) urlConnection;
 			httpURLConnection.setRequestMethod("POST");
-
 			httpURLConnection.setDoInput(true);
 			httpURLConnection.setDoOutput(true);
 			httpURLConnection.setRequestProperty("Accept-Charset", "utf-8");
@@ -131,7 +145,6 @@ public class LineProtocalOutputWriter extends AbstractOutputWriter implements Ou
 			outputStreamWriter.write(msg);
 			outputStreamWriter.flush();
 			outputStreamWriter.close();
-
 			int responseCode = httpURLConnection.getResponseCode();
 			if (responseCode != 204 && responseCode != 200) {
 				System.out.println("response error: " + responseCode);
