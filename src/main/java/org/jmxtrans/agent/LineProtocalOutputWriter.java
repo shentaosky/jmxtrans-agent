@@ -133,7 +133,7 @@ public class LineProtocalOutputWriter extends AbstractOutputWriter implements Ou
 			throws IOException {
 		HttpURLConnection urlConnection = null;
 		String urlstr = "Http://" + lineProtocalOutputWriter.getHost() + ":" + lineProtocalOutputWriter.getPort()
-				+ "/write?db=ServersData";
+				+ "/write?db="+locolSettings.get("DataBase");
 		OutputStream outputStream = null;
 		OutputStreamWriter outputStreamWriter = null;
 		StringBuffer tag = new StringBuffer("," + locolSettings.get("tags"));
