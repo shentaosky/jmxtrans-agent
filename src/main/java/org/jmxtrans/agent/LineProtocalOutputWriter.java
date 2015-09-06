@@ -199,8 +199,15 @@ public class LineProtocalOutputWriter extends AbstractOutputWriter implements Ou
             logger.info("ouputStreamWriter=null!");
             return;
         }
-        outputStreamWriter.flush();
-        releaseLineProtocalConnection();
+
+        try {
+            outputStreamWriter.flush();
+        } catch (IOException e) {
+            throw e;
+        } finally {
+            releaseLineProtocalConnection();
+        }
+
     }
 
     @Override
