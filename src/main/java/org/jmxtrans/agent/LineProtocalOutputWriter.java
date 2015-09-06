@@ -47,175 +47,164 @@ import org.jmxtrans.agent.util.net.HostAndPort;
  */
 public class LineProtocalOutputWriter extends AbstractOutputWriter implements OutputWriter {
 
-	public final static String SETTING_HOST = "host";
-	public final static String SETTING_PORT = "port";
-	public static final int SETTING_PORT_DEFAULT_VALUE = 8086;
-	public final static String SETTING_NAME_PREFIX = "namePrefix";
-	public final static String SETTING_SOCKET_CONNECT_TIMEOUT_IN_MILLIS = "socket.connectTimeoutInMillis";
-	public final static int SETTING_SOCKET_CONNECT_TIMEOUT_IN_MILLIS_DEFAULT_VALUE = 10000;
-	protected String metricPathPrefix;
-	protected HostAndPort lineProtocalOutputWriter;
-	private URL url;
-	private int socketConnectTimeoutInMillis = SETTING_SOCKET_CONNECT_TIMEOUT_IN_MILLIS_DEFAULT_VALUE;
-	private Map<String, String> locolSettings = null;
-	private HttpURLConnection urlConnection = null;
-	OutputStream outputStream = null;
-	OutputStreamWriter outputStreamWriter = null;
+    public final static String SETTING_HOST = "host";
+    public final static String SETTING_PORT = "port";
+    public static final int SETTING_PORT_DEFAULT_VALUE = 8086;
+    public final static String SETTING_NAME_PREFIX = "namePrefix";
+    public final static String SETTING_SOCKET_CONNECT_TIMEOUT_IN_MILLIS = "socket.connectTimeoutInMillis";
+    public final static int SETTING_SOCKET_CONNECT_TIMEOUT_IN_MILLIS_DEFAULT_VALUE = 10000;
+    protected String metricPathPrefix;
+    protected HostAndPort lineProtocalOutputWriter;
+    private URL url;
+    private int socketConnectTimeoutInMillis = SETTING_SOCKET_CONNECT_TIMEOUT_IN_MILLIS_DEFAULT_VALUE;
+    private Map<String, String> locolSettings = null;
+    private HttpURLConnection urlConnection = null;
+    OutputStream outputStream = null;
+    OutputStreamWriter outputStreamWriter = null;
 
-	@Override
-	public void postConstruct(Map<String, String> settings) {
-		locolSettings = settings;
-		lineProtocalOutputWriter = new HostAndPort(getString(settings, SETTING_HOST),
-				getInt(settings, SETTING_PORT, SETTING_PORT_DEFAULT_VALUE));
-		metricPathPrefix = getString(settings, SETTING_NAME_PREFIX, null);
-		socketConnectTimeoutInMillis = getInt(settings, SETTING_SOCKET_CONNECT_TIMEOUT_IN_MILLIS,
-				SETTING_SOCKET_CONNECT_TIMEOUT_IN_MILLIS_DEFAULT_VALUE);
-		System.out.println("postConstruct");
-		logger.log(getInfoLevel(),
-				"LineProtocalOutputWriter is configured with " + lineProtocalOutputWriter + ", metricPathPrefix="
-						+ metricPathPrefix + ", socketConnectTimeoutInMillis=" + socketConnectTimeoutInMillis);
-		int respondCode = createDatabase();
-		if (respondCode != 200 || respondCode != 204) {
-			logger.log(getInfoLevel(),
-					"LineProtocalOutputWriter is Fail to  create database with respondCode: " + respondCode
-							+ ", metricPathPrefix=" + metricPathPrefix + ", socketConnectTimeoutInMillis="
-							+ socketConnectTimeoutInMillis);
-		}
-	}
+    @Override
+    public void postConstruct(Map<String, String> settings) {
+        locolSettings = settings;
+        lineProtocalOutputWriter = new HostAndPort(getString(settings, SETTING_HOST), getInt(settings, SETTING_PORT, SETTING_PORT_DEFAULT_VALUE));
+        metricPathPrefix = getString(settings, SETTING_NAME_PREFIX, null);
+        socketConnectTimeoutInMillis = getInt(settings, SETTING_SOCKET_CONNECT_TIMEOUT_IN_MILLIS, SETTING_SOCKET_CONNECT_TIMEOUT_IN_MILLIS_DEFAULT_VALUE);
+        System.out.println("postConstruct");
+        logger.log(getInfoLevel(), "LineProtocalOutputWriter is configured with " + lineProtocalOutputWriter + ", metricPathPrefix=" + metricPathPrefix
+                + ", socketConnectTimeoutInMillis=" + socketConnectTimeoutInMillis);
+        int respondCode = createDatabase();
+        if (respondCode != 200 || respondCode != 204) {
+            logger.log(getInfoLevel(), "LineProtocalOutputWriter is Fail to  create database with respondCode: " + respondCode + ", metricPathPrefix=" + metricPathPrefix
+                    + ", socketConnectTimeoutInMillis=" + socketConnectTimeoutInMillis);
+        }
+    }
 
-	@SuppressWarnings("finally")
-	protected int createDatabase() {
-		String databaseName = locolSettings.get("database");
-		HttpURLConnection urlConnection1 = null;
-		int responseCode = 0;
-		String createDatabase = "Http://" + lineProtocalOutputWriter.getHost() + ":"
-				+ lineProtocalOutputWriter.getPort() + "/query?q=CREATE+DATABASE+" + databaseName;
-		try {
-			URL url1 = new URL(createDatabase);
-			urlConnection1 = (HttpURLConnection) url1.openConnection();
-			urlConnection1.connect();
-			responseCode = ((HttpURLConnection) urlConnection1).getResponseCode();
-		} catch (IOException e) {
-			e.printStackTrace();
-			return 0;
-		} finally {
-			urlConnection1.disconnect();
-			return responseCode;
-		}
-	}
+    @SuppressWarnings("finally")
+    protected int createDatabase() {
+        String databaseName = locolSettings.get("database");
+        HttpURLConnection urlConnection1 = null;
+        int responseCode = 0;
+        String createDatabase = "Http://" + lineProtocalOutputWriter.getHost() + ":" + lineProtocalOutputWriter.getPort() + "/query?q=CREATE+DATABASE+" + databaseName;
+        try {
+            URL url1 = new URL(createDatabase);
+            urlConnection1 = (HttpURLConnection) url1.openConnection();
+            urlConnection1.connect();
+            responseCode = ((HttpURLConnection) urlConnection1).getResponseCode();
+        } catch (IOException e) {
+            e.printStackTrace();
+            return 0;
+        } finally {
+            urlConnection1.disconnect();
+            return responseCode;
+        }
+    }
 
-	/**
-	 * {@link java.net.InetAddress#getLocalHost()} may not be known at JVM
-	 * startup when the process is launched as a Linux service.
-	 *
-	 * @return
-	 */
-	protected String buildMetricPathPrefix() {
-		if (metricPathPrefix != null) {
-			return metricPathPrefix;
-		}
-		String hostname;
-		try {
-			hostname = InetAddress.getLocalHost().getHostName().replaceAll("\\.", "_");
-		} catch (UnknownHostException e) {
-			hostname = "#unknown#";
-		}
-		metricPathPrefix = "servers." + hostname + ".";
-		return metricPathPrefix;
-	}
+    /**
+     * {@link java.net.InetAddress#getLocalHost()} may not be known at JVM
+     * startup when the process is launched as a Linux service.
+     *
+     * @return
+     */
+    protected String buildMetricPathPrefix() {
+        if (metricPathPrefix != null) {
+            return metricPathPrefix;
+        }
+        String hostname;
+        try {
+            hostname = InetAddress.getLocalHost().getHostName().replaceAll("\\.", "_");
+        } catch (UnknownHostException e) {
+            hostname = "#unknown#";
+        }
+        metricPathPrefix = "servers." + hostname + ".";
+        return metricPathPrefix;
+    }
 
-	@Override
-	public void writeInvocationResult(@Nonnull String invocationName, @Nullable Object value) {
-		writeQueryResult(invocationName, null, value);
-	}
+    @Override
+    public void writeInvocationResult(@Nonnull String invocationName, @Nullable Object value) throws IOException {
+        writeQueryResult(invocationName, null, value);
+    }
 
-	@Override
-	public void writeQueryResult(@Nonnull String metricName, @Nullable String type, @Nullable Object value) {
-		String urlstr = "Http://" + lineProtocalOutputWriter.getHost() + ":" + lineProtocalOutputWriter.getPort()
-				+ "/write?db=" + locolSettings.get("database");
-		String tag = new String("," + locolSettings.get("tags"));
-		String Value = null;
-		if (value instanceof String) {
-			Value = "\"" + value + "\"";
-		} else {
-			Value = value.toString();
-		}
-		String msg = new String(metricName.replace('.', '_') + tag.replace('.', '_').replaceAll(" ", "") + " "
-				+ "value=" + Value + " " + TimeUnit.SECONDS.convert(System.currentTimeMillis(), TimeUnit.MILLISECONDS)
-				+ "000000000" + "\n");
-		System.out.println("MSG:" + msg);
-		try {
-			ensureLineProtocalConnection(urlstr);
-			outputStreamWriter.write(msg);
+    @Override
+    public void writeQueryResult(@Nonnull String metricName, @Nullable String type, @Nullable Object value) throws IOException {
+        String urlStr = "Http://" + lineProtocalOutputWriter.getHost() + ":" + lineProtocalOutputWriter.getPort() + "/write?db=" + locolSettings.get("database");
+        String tag = new String("," + locolSettings.get("tags"));
+        String valueStr = null;
+        if (value instanceof String) {
+            valueStr = "\"" + value + "\"";
+        } else {
+            valueStr = value.toString();
+        }
+        String msg = new String(metricName.replace('.', '_') + tag.replace('.', '_').replaceAll(" ", "") + " " + "value=" + valueStr + " "
+                + TimeUnit.SECONDS.convert(System.currentTimeMillis(), TimeUnit.MILLISECONDS) + "000000000" + "\n");
+        try {
+            ensureLineProtocalConnection(urlStr);
+            outputStreamWriter.write(msg);
 
-		} catch (IOException e) {
-			e.printStackTrace();
-			logger.info("Failure to send to influxdb server!");
-			System.out.println("Failure to send to influxdb server!");
-			releaseLineProtocalConnection();
-		}
-	}
+        } catch (IOException e) {
+            e.printStackTrace();
+            logger.info("Failure to send to influxdb server!");
+            releaseLineProtocalConnection();
+            throw e;
+        }
+    }
 
-	private void releaseLineProtocalConnection() {
-		if (outputStreamWriter != null) {
-			try {
-				outputStreamWriter.close();
-				System.out.println("HttpResponseCode: " + urlConnection.getResponseCode() + "--"
-						+ urlConnection.getResponseMessage());
-			} catch (IOException e) {
-				e.printStackTrace();
-			}
-			outputStreamWriter = null;
-		}
-		if (outputStream != null) {
-			try {
-				outputStream.close();
+    private void releaseLineProtocalConnection() {
+        if (outputStreamWriter != null) {
+            try {
+                outputStreamWriter.close();
+                if (urlConnection.getResponseCode() != 200 && urlConnection.getResponseCode() != 204) {
+                    logger.info("HttpResponseCode: " + urlConnection.getResponseCode() + "--" + urlConnection.getResponseMessage());
+                }
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+            outputStreamWriter = null;
+        }
+        if (outputStream != null) {
+            try {
+                outputStream.close();
 
-			} catch (IOException e) {
-				e.printStackTrace();
-			}
-			outputStream = null;
-		}
-		if (urlConnection != null) {
-			urlConnection.disconnect();
-			urlConnection = null;
-		}
-	}
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+            outputStream = null;
+        }
+        if (urlConnection != null) {
+            urlConnection.disconnect();
+            urlConnection = null;
+        }
+    }
 
-	private void ensureLineProtocalConnection(String urlstr) throws IOException {
-		if (urlConnection != null) {
-			return;
-		}
-		try {
-			url = new URL(urlstr);
-		} catch (MalformedURLException e) {
-			e.printStackTrace();
-			logger.info("Malformed url");
-			System.out.println("Malformed url!");
-		}
-		urlConnection = (HttpURLConnection) url.openConnection();
-		urlConnection.setRequestMethod("POST");
-		urlConnection.setDoInput(true);
-		urlConnection.setDoOutput(true);
-		urlConnection.setRequestProperty("Accept-Charset", "utf-8");
-		outputStream = urlConnection.getOutputStream();
-		outputStreamWriter = new OutputStreamWriter(outputStream);
-	}
+    private void ensureLineProtocalConnection(String urlStr) throws IOException {
+        if (urlConnection != null) {
+            return;
+        }
+        try {
+            url = new URL(urlStr);
+        } catch (MalformedURLException e) {
+            e.printStackTrace();
+            logger.info("Malformed url");
+        }
+        urlConnection = (HttpURLConnection) url.openConnection();
+        urlConnection.setRequestMethod("POST");
+        urlConnection.setDoInput(true);
+        urlConnection.setDoOutput(true);
+        urlConnection.setRequestProperty("Accept-Charset", "utf-8");
+        outputStream = urlConnection.getOutputStream();
+        outputStreamWriter = new OutputStreamWriter(outputStream);
+    }
 
-	@Override
-	public void postCollect() throws IOException {
-		if (outputStreamWriter == null) {
-			System.out.println("ouputStreamWriter=null!");
-			return;
-		}
-		outputStreamWriter.flush();
-		System.out.println("flush done!");
-		releaseLineProtocalConnection();
-	}
+    @Override
+    public void postCollect() throws IOException {
+        if (outputStreamWriter == null) {
+            logger.info("ouputStreamWriter=null!");
+            return;
+        }
+        outputStreamWriter.flush();
+        releaseLineProtocalConnection();
+    }
 
-	@Override
-	public String toString() {
-		return "LineProtocalOutputWriter{" + ", " + lineProtocalOutputWriter + ", metricPathPrefix='" + metricPathPrefix
-				+ '\'' + '}';
-	}
+    @Override
+    public String toString() {
+        return "LineProtocalOutputWriter{" + ", " + lineProtocalOutputWriter + ", metricPathPrefix='" + metricPathPrefix + '\'' + '}';
+    }
 }
