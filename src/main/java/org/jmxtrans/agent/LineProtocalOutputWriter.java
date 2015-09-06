@@ -29,6 +29,7 @@ import static org.jmxtrans.agent.util.ConfigurationUtils.getString;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
+import java.lang.management.ManagementFactory;
 import java.net.HttpURLConnection;
 import java.net.InetAddress;
 import java.net.MalformedURLException;
@@ -39,6 +40,11 @@ import java.util.concurrent.TimeUnit;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
+import javax.management.InstanceNotFoundException;
+import javax.management.MalformedObjectNameException;
+import javax.management.Notification;
+import javax.management.NotificationListener;
+import javax.management.ObjectName;
 
 import org.jmxtrans.agent.util.net.HostAndPort;
 
@@ -61,6 +67,17 @@ public class LineProtocalOutputWriter extends AbstractOutputWriter implements Ou
     private HttpURLConnection urlConnection = null;
     OutputStream outputStream = null;
     OutputStreamWriter outputStreamWriter = null;
+    private ObjectName objectName;
+    private boolean isRegistered = false;
+
+    public LineProtocalOutputWriter() {
+        try {
+            objectName = new ObjectName("Hadoop:service=HBase,name=RegionServer,sub=Exceptions");
+        } catch (MalformedObjectNameException e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        }
+    }
 
     @Override
     public void postConstruct(Map<String, String> settings) {
@@ -76,6 +93,7 @@ public class LineProtocalOutputWriter extends AbstractOutputWriter implements Ou
             logger.log(getInfoLevel(), "LineProtocalOutputWriter is Fail to  create database with respondCode: " + respondCode + ", metricPathPrefix=" + metricPathPrefix
                     + ", socketConnectTimeoutInMillis=" + socketConnectTimeoutInMillis);
         }
+        registException();
     }
 
     @SuppressWarnings("finally")
@@ -125,6 +143,7 @@ public class LineProtocalOutputWriter extends AbstractOutputWriter implements Ou
 
     @Override
     public void writeQueryResult(@Nonnull String metricName, @Nullable String type, @Nullable Object value) throws IOException {
+        registException();
         String urlStr = "Http://" + lineProtocalOutputWriter.getHost() + ":" + lineProtocalOutputWriter.getPort() + "/write?db=" + locolSettings.get("database");
         String tag = new String("," + locolSettings.get("tags"));
         String valueStr = null;
@@ -213,5 +232,32 @@ public class LineProtocalOutputWriter extends AbstractOutputWriter implements Ou
     @Override
     public String toString() {
         return "LineProtocalOutputWriter{" + ", " + lineProtocalOutputWriter + ", metricPathPrefix='" + metricPathPrefix + '\'' + '}';
+    }
+
+    private void registException() {
+        if (!isRegistered && ManagementFactory.getPlatformMBeanServer().isRegistered(objectName)) {
+            try {
+                ManagementFactory.getPlatformMBeanServer().addNotificationListener(objectName, new JmxExceptionListener(), null, null);
+                isRegistered = true;
+            } catch (InstanceNotFoundException e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
+    class JmxExceptionListener implements NotificationListener {
+        @Override
+        public void handleNotification(Notification notification, Object handback) {
+            @Nonnull
+            String exceptionName = notification.getType();
+            @Nonnull
+            String exceptionMsg = notification.getMessage().replace('\n', '#');
+            try {
+                writeQueryResult(exceptionName, null, exceptionMsg);
+            } catch (IOException e) {
+                logger.info("Write exception message error");
+            }
+        }
+
     }
 }
