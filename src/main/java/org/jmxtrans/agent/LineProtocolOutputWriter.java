@@ -45,7 +45,7 @@ import org.jmxtrans.agent.util.net.HostAndPort;
 /**
  * @author <a href="tao.shen@transwarp.io">Tao Shen</a>
  */
-public class LineProtocalOutputWriter extends AbstractOutputWriter implements OutputWriter {
+public class LineProtocolOutputWriter extends AbstractOutputWriter implements OutputWriter {
 
     public final static String SETTING_HOST = "host";
     public final static String SETTING_PORT = "port";
@@ -54,7 +54,7 @@ public class LineProtocalOutputWriter extends AbstractOutputWriter implements Ou
     public final static String SETTING_SOCKET_CONNECT_TIMEOUT_IN_MILLIS = "socket.connectTimeoutInMillis";
     public final static int SETTING_SOCKET_CONNECT_TIMEOUT_IN_MILLIS_DEFAULT_VALUE = 10000;
     protected String metricPathPrefix;
-    protected HostAndPort lineProtocalOutputWriter;
+    protected HostAndPort lineProtocolOutputWriter;
     private URL url;
     private int socketConnectTimeoutInMillis = SETTING_SOCKET_CONNECT_TIMEOUT_IN_MILLIS_DEFAULT_VALUE;
     private Map<String, String> locolSettings = null;
@@ -65,15 +65,15 @@ public class LineProtocalOutputWriter extends AbstractOutputWriter implements Ou
     @Override
     public void postConstruct(Map<String, String> settings) {
         locolSettings = settings;
-        lineProtocalOutputWriter = new HostAndPort(getString(settings, SETTING_HOST), getInt(settings, SETTING_PORT, SETTING_PORT_DEFAULT_VALUE));
+        lineProtocolOutputWriter = new HostAndPort(getString(settings, SETTING_HOST), getInt(settings, SETTING_PORT, SETTING_PORT_DEFAULT_VALUE));
         metricPathPrefix = getString(settings, SETTING_NAME_PREFIX, null);
         socketConnectTimeoutInMillis = getInt(settings, SETTING_SOCKET_CONNECT_TIMEOUT_IN_MILLIS, SETTING_SOCKET_CONNECT_TIMEOUT_IN_MILLIS_DEFAULT_VALUE);
         System.out.println("postConstruct");
-        logger.log(getInfoLevel(), "LineProtocalOutputWriter is configured with " + lineProtocalOutputWriter + ", metricPathPrefix=" + metricPathPrefix
+        logger.log(getInfoLevel(), "LineProtocolOutputWriter is configured with " + lineProtocolOutputWriter + ", metricPathPrefix=" + metricPathPrefix
                 + ", socketConnectTimeoutInMillis=" + socketConnectTimeoutInMillis);
         int respondCode = createDatabase();
         if (respondCode != 200 || respondCode != 204) {
-            logger.log(getInfoLevel(), "LineProtocalOutputWriter is Fail to  create database with respondCode: " + respondCode + ", metricPathPrefix=" + metricPathPrefix
+            logger.log(getInfoLevel(), "LineProtocolOutputWriter is Fail to  create database with respondCode: " + respondCode + ", metricPathPrefix=" + metricPathPrefix
                     + ", socketConnectTimeoutInMillis=" + socketConnectTimeoutInMillis);
         }
     }
@@ -83,7 +83,7 @@ public class LineProtocalOutputWriter extends AbstractOutputWriter implements Ou
         String databaseName = locolSettings.get("database");
         HttpURLConnection urlConnection1 = null;
         int responseCode = 0;
-        String createDatabase = "Http://" + lineProtocalOutputWriter.getHost() + ":" + lineProtocalOutputWriter.getPort() + "/query?q=CREATE+DATABASE+" + databaseName;
+        String createDatabase = "Http://" + lineProtocolOutputWriter.getHost() + ":" + lineProtocolOutputWriter.getPort() + "/query?q=CREATE+DATABASE+" + databaseName;
         try {
             URL url1 = new URL(createDatabase);
             urlConnection1 = (HttpURLConnection) url1.openConnection();
@@ -125,7 +125,7 @@ public class LineProtocalOutputWriter extends AbstractOutputWriter implements Ou
 
     @Override
     public void writeQueryResult(@Nonnull String metricName, @Nullable String type, @Nullable Object value) throws IOException {
-        String urlStr = "Http://" + lineProtocalOutputWriter.getHost() + ":" + lineProtocalOutputWriter.getPort() + "/write?db=" + locolSettings.get("database");
+        String urlStr = "Http://" + lineProtocolOutputWriter.getHost() + ":" + lineProtocolOutputWriter.getPort() + "/write?db=" + locolSettings.get("database");
         String tag = new String("," + locolSettings.get("tags"));
         String valueStr = null;
         if (value instanceof String) {
@@ -212,6 +212,10 @@ public class LineProtocalOutputWriter extends AbstractOutputWriter implements Ou
 
     @Override
     public String toString() {
-        return "LineProtocalOutputWriter{" + ", " + lineProtocalOutputWriter + ", metricPathPrefix='" + metricPathPrefix + '\'' + '}';
+        return "LineProtocolOutputWriter{" + 
+                ", " + lineProtocolOutputWriter + 
+                ", metricPathPrefix='" + 
+                metricPathPrefix + '\'' + 
+                '}';
     }
 }
