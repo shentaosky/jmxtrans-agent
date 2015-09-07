@@ -35,8 +35,9 @@ import java.net.InetAddress;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.UnknownHostException;
+import java.util.LinkedList;
 import java.util.Map;
-import java.util.concurrent.TimeUnit;
+import  java.util.Iterator;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
@@ -67,12 +68,17 @@ public class LineProtocolOutputWriter extends AbstractOutputWriter implements Ou
     private HttpURLConnection urlConnection = null;
     OutputStream outputStream = null;
     OutputStreamWriter outputStreamWriter = null;
-    private ObjectName objectName;
-    private boolean isRegistered = false;
+    private LinkedList<ObjectName> objectNames = new LinkedList<ObjectName>();
+    private final String[] listenerNames = {
+            "Hadoop:service=HBase,name=RegionServer,sub=ServerExceptions",
+            "Hadoop:service=HBase,name=RegionServer,sub=RegionsExceptions",
+    }; 
 
     public LineProtocolOutputWriter() {
         try {
-            objectName = new ObjectName("Hadoop:service=HBase,name=RegionServer,sub=Exceptions");
+            for(String name : listenerNames) {
+                objectNames.add(new ObjectName(name) );
+            }
         } catch (MalformedObjectNameException e) {
             e.printStackTrace();
         }
@@ -152,7 +158,8 @@ public class LineProtocolOutputWriter extends AbstractOutputWriter implements Ou
             valueStr = value.toString();
         }
         String msg = new String(metricName.replace('.', '_') + tag.replace('.', '_').replaceAll(" ", "") + " " + "value=" + valueStr + " "
-                + TimeUnit.SECONDS.convert(System.currentTimeMillis(), TimeUnit.MILLISECONDS) + "000000000" + "\n");
+                + System.currentTimeMillis()+ "000000" + "\n");
+        System.out.println("MSG:"+msg);
         try {
             ensureLineProtocalConnection(urlStr);
             outputStreamWriter.write(msg);
@@ -236,12 +243,16 @@ public class LineProtocolOutputWriter extends AbstractOutputWriter implements Ou
     }
 
     private void registException() {
-        if (!isRegistered && ManagementFactory.getPlatformMBeanServer().isRegistered(objectName)) {
-            try {
-                ManagementFactory.getPlatformMBeanServer().addNotificationListener(objectName, new JmxExceptionListener(), null, null);
-                isRegistered = true;
-            } catch (InstanceNotFoundException e) {
-                e.printStackTrace();
+        Iterator<ObjectName> iterator = objectNames.iterator();
+        while (iterator.hasNext()) {
+            ObjectName objectName = iterator.next();
+            if (ManagementFactory.getPlatformMBeanServer().isRegistered(objectName)) {
+                try {
+                    ManagementFactory.getPlatformMBeanServer().addNotificationListener(objectName, new JmxExceptionListener(), null, null);
+                    iterator.remove();
+                } catch (InstanceNotFoundException e) {
+                    e.printStackTrace();
+                }
             }
         }
     }
@@ -253,6 +264,7 @@ public class LineProtocolOutputWriter extends AbstractOutputWriter implements Ou
             String exceptionName = notification.getType();
             @Nonnull
             String exceptionMsg = notification.getMessage().replace('\n', '#');
+            System.out.println("exceptionMsg"+exceptionMsg);
             try {
                 writeQueryResult(exceptionName, null, exceptionMsg);
             } catch (IOException e) {
