@@ -71,11 +71,10 @@ public class LineProtocolOutputWriter extends AbstractOutputWriter implements Ou
     private ObjectName objectName;
     private boolean isRegistered = false;
 
-    public LineProtocalOutputWriter() {
+    public LineProtocolOutputWriter() {
         try {
             objectName = new ObjectName("Hadoop:service=HBase,name=RegionServer,sub=Exceptions");
         } catch (MalformedObjectNameException e) {
-            // TODO Auto-generated catch block
             e.printStackTrace();
         }
     }
