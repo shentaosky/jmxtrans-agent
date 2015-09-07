@@ -88,7 +88,7 @@ public class LineProtocolOutputWriter extends AbstractOutputWriter implements Ou
             URL url1 = new URL(createDatabase);
             urlConnection1 = (HttpURLConnection) url1.openConnection();
             urlConnection1.connect();
-            responseCode = ((HttpURLConnection) urlConnection1).getResponseCode();
+            responseCode = urlConnection1.getResponseCode();
         } catch (IOException e) {
             e.printStackTrace();
             return 0;
