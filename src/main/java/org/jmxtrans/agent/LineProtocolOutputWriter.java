@@ -57,33 +57,37 @@ public class LineProtocolOutputWriter extends AbstractOutputWriter implements Ou
     protected HostAndPort lineProtocolOutputWriter;
     private URL url;
     private int socketConnectTimeoutInMillis = SETTING_SOCKET_CONNECT_TIMEOUT_IN_MILLIS_DEFAULT_VALUE;
-    private Map<String, String> locolSettings = null;
+    private Map<String, String> localSettings = null;
     private HttpURLConnection urlConnection = null;
+    private String Database = null;
     OutputStream outputStream = null;
     OutputStreamWriter outputStreamWriter = null;
 
     @Override
     public void postConstruct(Map<String, String> settings) {
-        locolSettings = settings;
+        localSettings = settings;
         lineProtocolOutputWriter = new HostAndPort(getString(settings, SETTING_HOST), getInt(settings, SETTING_PORT, SETTING_PORT_DEFAULT_VALUE));
         metricPathPrefix = getString(settings, SETTING_NAME_PREFIX, null);
         socketConnectTimeoutInMillis = getInt(settings, SETTING_SOCKET_CONNECT_TIMEOUT_IN_MILLIS, SETTING_SOCKET_CONNECT_TIMEOUT_IN_MILLIS_DEFAULT_VALUE);
         System.out.println("postConstruct");
-        logger.log(getInfoLevel(), "LineProtocolOutputWriter is configured with " + lineProtocolOutputWriter + ", metricPathPrefix=" + metricPathPrefix
-                + ", socketConnectTimeoutInMillis=" + socketConnectTimeoutInMillis);
+        logger.log(getInfoLevel(), "LineProtocolOutputWriter is configured with "
+            + lineProtocolOutputWriter + ", metricPathPrefix=" + metricPathPrefix + ", socketConnectTimeoutInMillis=" + socketConnectTimeoutInMillis);
+        Database = settings.get("database");
         int respondCode = createDatabase();
-        if (respondCode != 200 || respondCode != 204) {
-            logger.log(getInfoLevel(), "LineProtocolOutputWriter is Fail to  create database with respondCode: " + respondCode + ", metricPathPrefix=" + metricPathPrefix
-                    + ", socketConnectTimeoutInMillis=" + socketConnectTimeoutInMillis);
+        if (respondCode != 200
+            && respondCode != 204) {
+            logger.log(getInfoLevel(), "LineProtocolOutputWriter is Fail to  create database with respondCode: "
+                + respondCode + ", metricPathPrefix=" + metricPathPrefix + ", socketConnectTimeoutInMillis=" + socketConnectTimeoutInMillis);
         }
     }
 
     @SuppressWarnings("finally")
     protected int createDatabase() {
-        String databaseName = locolSettings.get("database");
+        String databaseName = localSettings.get("database");
         HttpURLConnection urlConnection1 = null;
         int responseCode = 0;
-        String createDatabase = "Http://" + lineProtocolOutputWriter.getHost() + ":" + lineProtocolOutputWriter.getPort() + "/query?q=CREATE+DATABASE+" + databaseName;
+        String createDatabase = String.format("http://{%s}:{%s}/query?q=CREATE+DATABASE+{%s}", lineProtocolOutputWriter.getHost(), lineProtocolOutputWriter.getPort(),
+            databaseName);
         try {
             URL url1 = new URL(createDatabase);
             urlConnection1 = (HttpURLConnection) url1.openConnection();
@@ -93,7 +97,9 @@ public class LineProtocolOutputWriter extends AbstractOutputWriter implements Ou
             e.printStackTrace();
             return 0;
         } finally {
-            urlConnection1.disconnect();
+            if (urlConnection1!=null) {
+                urlConnection1.disconnect();
+            }
             return responseCode;
         }
     }
@@ -114,7 +120,8 @@ public class LineProtocolOutputWriter extends AbstractOutputWriter implements Ou
         } catch (UnknownHostException e) {
             hostname = "#unknown#";
         }
-        metricPathPrefix = "servers." + hostname + ".";
+        metricPathPrefix = "servers."
+            + hostname + ".";
         return metricPathPrefix;
     }
 
@@ -125,20 +132,23 @@ public class LineProtocolOutputWriter extends AbstractOutputWriter implements Ou
 
     @Override
     public void writeQueryResult(@Nonnull String metricName, @Nullable String type, @Nullable Object value) throws IOException {
-        String urlStr = "Http://" + lineProtocolOutputWriter.getHost() + ":" + lineProtocolOutputWriter.getPort() + "/write?db=" + locolSettings.get("database");
-        String tag = new String("," + locolSettings.get("tags"));
+        if (value == null) {
+            return;
+        }
+        String urlStr = String.format("http://%s:%s/write?db=%s&precision=ms", lineProtocolOutputWriter.getHost(), lineProtocolOutputWriter.getPort(), Database);
+        String tag = ","
+            + localSettings.get("tags");
         String valueStr = null;
         if (value instanceof String) {
-            valueStr = "\"" + value + "\"";
+            valueStr = "\""
+                + value + "\"";
         } else {
             valueStr = value.toString();
         }
-        String msg = new String(metricName.replace('.', '_') + tag.replace('.', '_').replaceAll(" ", "") + " " + "value=" + valueStr + " "
-                + TimeUnit.SECONDS.convert(System.currentTimeMillis(), TimeUnit.MILLISECONDS) + "000000000" + "\n");
+        String msg = String.format("%s%s value=%s %s%n", metricName.replace('.', '_'), tag.replace('.', '_').replaceAll(" ", ""), valueStr, System.currentTimeMillis());
         try {
             ensureLineProtocalConnection(urlStr);
             outputStreamWriter.write(msg);
-
         } catch (IOException e) {
             e.printStackTrace();
             logger.info("Failure to send to influxdb server!");
@@ -151,8 +161,10 @@ public class LineProtocolOutputWriter extends AbstractOutputWriter implements Ou
         if (outputStreamWriter != null) {
             try {
                 outputStreamWriter.close();
-                if (urlConnection.getResponseCode() != 200 && urlConnection.getResponseCode() != 204) {
-                    logger.info("HttpResponseCode: " + urlConnection.getResponseCode() + "--" + urlConnection.getResponseMessage());
+                if (urlConnection.getResponseCode() != 200
+                    && urlConnection.getResponseCode() != 204) {
+                    logger.info("HttpResponseCode: "
+                        + urlConnection.getResponseCode() + "--" + urlConnection.getResponseMessage());
                 }
             } catch (IOException e) {
                 e.printStackTrace();
@@ -190,7 +202,7 @@ public class LineProtocolOutputWriter extends AbstractOutputWriter implements Ou
         urlConnection.setDoOutput(true);
         urlConnection.setRequestProperty("Accept-Charset", "utf-8");
         outputStream = urlConnection.getOutputStream();
-        outputStreamWriter = new OutputStreamWriter(outputStream);
+        outputStreamWriter = new OutputStreamWriter(outputStream, "utf-8");
     }
 
     @Override
@@ -207,15 +219,10 @@ public class LineProtocolOutputWriter extends AbstractOutputWriter implements Ou
         } finally {
             releaseLineProtocalConnection();
         }
-
     }
 
     @Override
     public String toString() {
-        return "LineProtocolOutputWriter{" + 
-                ", " + lineProtocolOutputWriter + 
-                ", metricPathPrefix='" + 
-                metricPathPrefix + '\'' + 
-                '}';
+        return String.format("LineProtocolOutputWriter{ %s, metricPathPrefix=%s\\}", lineProtocolOutputWriter, metricPathPrefix);
     }
 }
