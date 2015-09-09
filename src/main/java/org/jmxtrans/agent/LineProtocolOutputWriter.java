@@ -40,7 +40,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.Map.Entry;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.ArrayList;
 import java.util.Iterator;
 
 import javax.annotation.Nonnull;
@@ -156,8 +155,7 @@ public class LineProtocolOutputWriter extends AbstractOutputWriter implements Ou
         } catch (UnknownHostException e) {
             hostname = "#unknown#";
         }
-        metricPathPrefix = "servers."
-            + hostname + ".";
+        metricPathPrefix = "servers." + hostname + ".";
         return metricPathPrefix;
     }
 
@@ -176,8 +174,7 @@ public class LineProtocolOutputWriter extends AbstractOutputWriter implements Ou
         String tag = "," + localSettings.get("tags");
         String valueStr = null;
         if (value instanceof String) {
-            valueStr = "\""
-                + value + "\"";
+            valueStr = "\"" + value + "\"";
         } else {
             valueStr = value.toString();
         }
@@ -200,10 +197,8 @@ public class LineProtocolOutputWriter extends AbstractOutputWriter implements Ou
             try {
                 outputStreamWriter.flush();
                 outputStreamWriter.close();
-                if (urlConnection.getResponseCode() != 200
-                    && urlConnection.getResponseCode() != 204) {
-                    logger.info("HttpResponseCode: "
-                        + urlConnection.getResponseCode() + "--" + urlConnection.getResponseMessage());
+                if (urlConnection.getResponseCode() != 200 && urlConnection.getResponseCode() != 204) {
+                    logger.info("HttpResponseCode: " + urlConnection.getResponseCode() + "--" + urlConnection.getResponseMessage());
                 }
             } catch (IOException e) {
                 e.printStackTrace();
@@ -213,7 +208,6 @@ public class LineProtocolOutputWriter extends AbstractOutputWriter implements Ou
         if (outputStream != null) {
             try {
                 outputStream.close();
-
             } catch (IOException e) {
                 e.printStackTrace();
             }
@@ -253,7 +247,6 @@ public class LineProtocolOutputWriter extends AbstractOutputWriter implements Ou
             return;
         }
         if (countWrite.get() >= MAX_SEND_MSEEAGE_COUNT || currentTime - firstTime >= MAX_SEND_TIME_INTERVEL) {
-
             try {
                 outputStreamWriter.flush();
             } catch (IOException e) {
