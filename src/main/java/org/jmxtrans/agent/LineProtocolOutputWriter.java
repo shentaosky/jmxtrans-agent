@@ -97,7 +97,7 @@ public class LineProtocolOutputWriter extends AbstractOutputWriter implements Ou
             Iterator<Entry<String, String>> it = set.iterator();
             while (it.hasNext()) {
                 Map.Entry<String, String> res = it.next();
-                if (res.getKey().equals("exceptionName") ) {
+                if (res.getKey().equals("exceptionName")) {
                     System.out.println(res.getValue());
                     objectNames.add(new ObjectName(res.getValue()));
                 }
