@@ -106,19 +106,11 @@ public class LineProtocolOutputWriter extends AbstractOutputWriter implements Ou
         }
         firstTime = System.currentTimeMillis();
         Database = settings.get("database");
-        int respondCode = createDatabase();
-        if (respondCode != 200 && respondCode != 204) {
-            logger.log(getInfoLevel(), "LineProtocolOutputWriter is Fail to  create database with respondCode: " +
-                respondCode +
-                ", metricPathPrefix=" +
-                metricPathPrefix +
-                ", socketConnectTimeoutInMillis=" +
-                socketConnectTimeoutInMillis);
-        }
+        createDatabase();
+
     }
 
-    @SuppressWarnings("finally")
-    protected int createDatabase() {
+    protected void createDatabase() {
         HttpURLConnection urlConnection1 = null;
         int responseCode = 0;
         String createDatabase = String.format("http://%s:%s/query?q=CREATE+DATABASE+%s", lineProtocolOutputWriter.getHost(), lineProtocolOutputWriter.getPort(),
@@ -128,14 +120,21 @@ public class LineProtocolOutputWriter extends AbstractOutputWriter implements Ou
             urlConnection1 = (HttpURLConnection) url1.openConnection();
             urlConnection1.connect();
             responseCode = urlConnection1.getResponseCode();
+            if (responseCode != 200 && responseCode != 204) {
+                logger.log(getInfoLevel(), "LineProtocolOutputWriter is Fail to  create database with respondCode: " +
+                    responseCode +
+                    ", metricPathPrefix=" +
+                    metricPathPrefix +
+                    ", socketConnectTimeoutInMillis=" +
+                    socketConnectTimeoutInMillis);
+            }
         } catch (IOException e) {
             e.printStackTrace();
-            return 0;
         } finally {
             if (urlConnection1 != null) {
                 urlConnection1.disconnect();
             }
-            return responseCode;
+
         }
     }
 
@@ -224,6 +223,7 @@ public class LineProtocolOutputWriter extends AbstractOutputWriter implements Ou
             return;
         }
         try {
+            createDatabase();
             url = new URL(urlStr);
         } catch (MalformedURLException e) {
             e.printStackTrace();
