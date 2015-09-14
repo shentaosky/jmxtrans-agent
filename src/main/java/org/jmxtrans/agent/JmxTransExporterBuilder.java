@@ -27,7 +27,6 @@ import org.jmxtrans.agent.util.PropertyPlaceholderResolver;
 import org.jmxtrans.agent.util.logging.Logger;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
-import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 
 import javax.xml.parsers.DocumentBuilder;
@@ -37,7 +36,6 @@ import java.io.InputStream;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
@@ -199,49 +197,19 @@ public class JmxTransExporterBuilder {
             OutputWriter outputWriter;
             try {
                 outputWriter = (OutputWriter) Class.forName(outputWriterClass).newInstance();
-                String outputexceptionName="org.jmxtrans.agent.LineProtocolOutputWriter";
-                if (outputexceptionName.equals(outputWriterClass)) {
-                    Map<String, String> settings1 = new IdentityHashMap<>();
-                    NodeList settingsNodeList = outputWriterElement.getElementsByTagName("*");
-                    for (int j = 0; j < settingsNodeList.getLength(); j++) {
-                        Node settingNode = (Node) settingsNodeList.item(j);
-                        if (settingNode.getNodeName().equals("exceptionlisteners")) {
-                            NodeList exceptionList = settingNode.getChildNodes();
-                            for (int k = 0; k < exceptionList.getLength(); k++) {
-                                if (exceptionList.item(k) instanceof Element) {
-                                    Element exceptionElement = (Element) exceptionList.item(k);
-                                    String exceptionName = exceptionElement.getAttribute("name");
-                                    StringBuilder str = new StringBuilder();
-                                    str.append("exceptionName");
-                                    settings1.put(str.toString(), placeholderResolver.resolveString(exceptionName));
-                                }
-                            }
-                        } else {
-                            Element settingElement = (Element) settingNode;
-                            settings1.put(settingElement.getNodeName(), placeholderResolver.resolveString(settingElement.getTextContent()));
-                        }
-                    }
-                    outputWriter = new OutputWriterCircuitBreakerDecorator(outputWriter);
-                    outputWriter.postConstruct(settings1);
-                    outputWriters.add(outputWriter);
-                } else {
-                    Map<String, String> settings = new HashMap<String, String>();
-                    NodeList settingsNodeList = outputWriterElement.getElementsByTagName("*");
-                    for (int j = 0; j < settingsNodeList.getLength(); j++) {
-                        Element settingElement = (Element) settingsNodeList.item(j);
-                        settings.put(settingElement.getNodeName(), placeholderResolver.resolveString(settingElement.getTextContent()));
-                        outputWriter = new OutputWriterCircuitBreakerDecorator(outputWriter);
-                        outputWriter.postConstruct(settings);
-                        outputWriters.add(outputWriter);
-                    }
+                Map<String, String> settings = new HashMap<String, String>();
+                NodeList settingsNodeList = outputWriterElement.getElementsByTagName("*");
+                for (int j = 0; j < settingsNodeList.getLength(); j++) {
+                    Element settingElement = (Element) settingsNodeList.item(j);
+                    settings.put(settingElement.getNodeName(), placeholderResolver.resolveString(settingElement.getTextContent()));
                 }
-            } catch (InstantiationException e) {
-                throw new IllegalArgumentException("Exception instantiating " + outputWriterClass, e);
-            } catch (IllegalAccessException e) {
-                throw new IllegalArgumentException("Exception instantiating " + outputWriterClass, e);
-            } catch (ClassNotFoundException e) {
+                outputWriter = new OutputWriterCircuitBreakerDecorator(outputWriter);
+                outputWriter.postConstruct(settings);
+                outputWriters.add(outputWriter);
+            } catch (Exception e) {
                 throw new IllegalArgumentException("Exception instantiating " + outputWriterClass, e);
             }
+
         }
 
         switch (outputWriters.size()) {

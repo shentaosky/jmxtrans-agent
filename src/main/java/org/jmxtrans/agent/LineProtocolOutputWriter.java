@@ -26,7 +26,9 @@ package org.jmxtrans.agent;
 import static org.jmxtrans.agent.util.ConfigurationUtils.getInt;
 import static org.jmxtrans.agent.util.ConfigurationUtils.getString;
 
+import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.lang.management.ManagementFactory;
@@ -49,8 +51,13 @@ import javax.management.MalformedObjectNameException;
 import javax.management.Notification;
 import javax.management.NotificationListener;
 import javax.management.ObjectName;
+import javax.xml.parsers.DocumentBuilder;
+import javax.xml.parsers.DocumentBuilderFactory;
 
 import org.jmxtrans.agent.util.net.HostAndPort;
+import org.w3c.dom.Document;
+import org.w3c.dom.Element;
+import org.w3c.dom.NodeList;
 
 /**
  * @author <a href="tao.shen@transwarp.io">Tao Shen</a>
@@ -85,29 +92,56 @@ public class LineProtocolOutputWriter extends AbstractOutputWriter implements Ou
         lineProtocolOutputWriter = new HostAndPort(getString(settings, SETTING_HOST), getInt(settings, SETTING_PORT, SETTING_PORT_DEFAULT_VALUE));
         metricPathPrefix = getString(settings, SETTING_NAME_PREFIX, null);
         socketConnectTimeoutInMillis = getInt(settings, SETTING_SOCKET_CONNECT_TIMEOUT_IN_MILLIS, SETTING_SOCKET_CONNECT_TIMEOUT_IN_MILLIS_DEFAULT_VALUE);
-        logger.log(getInfoLevel(), "LineProtocolOutputWriter is configured with " +
+        logger.log(getInfoLevel(), "Configured with " +
             lineProtocolOutputWriter +
             ", metricPathPrefix=" +
             metricPathPrefix +
             ", socketConnectTimeoutInMillis=" +
             socketConnectTimeoutInMillis);
+        String expcetionPath = settings.get("exceptions");
         try {
-            Set<Entry<String, String>> set = settings.entrySet();
-            Iterator<Entry<String, String>> it = set.iterator();
-            while (it.hasNext()) {
-                Map.Entry<String, String> res = it.next();
-                if (res.getKey().equals("exceptionName")) {
-                    System.out.println(res.getValue());
-                    objectNames.add(new ObjectName(res.getValue()));
-                }
-            }
-        } catch (MalformedObjectNameException e) {
+            buildObjectNames(expcetionPath);
+        } catch (Exception e) {
             e.printStackTrace();
         }
         firstTime = System.currentTimeMillis();
         Database = settings.get("database");
         createDatabase();
 
+    }
+
+    public void buildObjectNames(String configurationFilePath) throws Exception {
+        if (configurationFilePath == null) {
+            throw new NullPointerException("configurationFilePath cannot be null");
+        }
+        DocumentBuilder dBuilder = DocumentBuilderFactory.newInstance().newDocumentBuilder();
+        Document document;
+        if (configurationFilePath.toLowerCase().startsWith("classpath:")) {
+            String classpathResourcePath = configurationFilePath.substring("classpath:".length());
+            InputStream in = Thread.currentThread().getContextClassLoader().getResourceAsStream(classpathResourcePath);
+            document = dBuilder.parse(in);
+        } else if (configurationFilePath.toLowerCase().startsWith("file://") ||
+            configurationFilePath.toLowerCase().startsWith("http://") ||
+            configurationFilePath.toLowerCase().startsWith("https://")) {
+            URL url = new URL(configurationFilePath);
+            document = dBuilder.parse(url.openStream());
+        } else {
+            File xmlFile = new File(configurationFilePath);
+            if (!xmlFile.exists()) {
+                throw new IllegalArgumentException("Configuration file '" + xmlFile.getAbsolutePath() + "' not found");
+            }
+            document = dBuilder.parse(xmlFile);
+        }
+
+        Element rootElement = document.getDocumentElement();
+        NodeList exceptionList = rootElement.getChildNodes();
+        for (int k = 0; k < exceptionList.getLength(); k++) {
+            if (exceptionList.item(k) instanceof Element) {
+                Element exceptionElement = (Element) exceptionList.item(k);
+                String exceptionName = exceptionElement.getAttribute("name");
+                objectNames.add(new ObjectName(exceptionName));
+            }
+        }
     }
 
     protected void createDatabase() {
@@ -121,7 +155,7 @@ public class LineProtocolOutputWriter extends AbstractOutputWriter implements Ou
             urlConnection1.connect();
             responseCode = urlConnection1.getResponseCode();
             if (responseCode != 200 && responseCode != 204) {
-                logger.log(getInfoLevel(), "LineProtocolOutputWriter is Fail to  create database with respondCode: " +
+                logger.log(getInfoLevel(), "Fail to  create database with respondCode: " +
                     responseCode +
                     ", metricPathPrefix=" +
                     metricPathPrefix +
@@ -185,7 +219,7 @@ public class LineProtocolOutputWriter extends AbstractOutputWriter implements Ou
             countWrite.incrementAndGet();
         } catch (IOException e) {
             e.printStackTrace();
-            logger.info("Failure to send to influxdb server!");
+            logger.log(getInfoLevel(), "Fail to send to influxdb server!");
             releaseLineProtocalConnection();
             throw e;
         }
@@ -197,7 +231,7 @@ public class LineProtocolOutputWriter extends AbstractOutputWriter implements Ou
                 outputStreamWriter.flush();
                 outputStreamWriter.close();
                 if (urlConnection.getResponseCode() != 200 && urlConnection.getResponseCode() != 204) {
-                    logger.info("HttpResponseCode: " + urlConnection.getResponseCode() + "--" + urlConnection.getResponseMessage());
+                    logger.log(getInfoLevel(), "HttpResponseCode: " + urlConnection.getResponseCode() + "--" + urlConnection.getResponseMessage());
                 }
             } catch (IOException e) {
                 e.printStackTrace();
@@ -227,7 +261,7 @@ public class LineProtocolOutputWriter extends AbstractOutputWriter implements Ou
             url = new URL(urlStr);
         } catch (MalformedURLException e) {
             e.printStackTrace();
-            logger.info("Malformed url");
+            logger.log(getInfoLevel(), "Malformed url");
         }
         urlConnection = (HttpURLConnection) url.openConnection();
         urlConnection.setRequestMethod("POST");
@@ -243,7 +277,7 @@ public class LineProtocolOutputWriter extends AbstractOutputWriter implements Ou
         registException();
         long currentTime = System.currentTimeMillis();
         if (outputStreamWriter == null) {
-            logger.info("ouputStreamWriter=null!");
+            logger.log(getInfoLevel(), "ouputStreamWriter can't be null");
             return;
         }
         if (countWrite.get() >= MAX_SEND_MSEEAGE_COUNT || currentTime - firstTime >= MAX_SEND_TIME_INTERVEL) {
@@ -289,7 +323,7 @@ public class LineProtocolOutputWriter extends AbstractOutputWriter implements Ou
             try {
                 writeQueryResult(exceptionName, null, exceptionMsg);
             } catch (IOException e) {
-                logger.info("Write exception message error");
+                logger.log(getInfoLevel(), "Write exception message error");
             }
         }
 
