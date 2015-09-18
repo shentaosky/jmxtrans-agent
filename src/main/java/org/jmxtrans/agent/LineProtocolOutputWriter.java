@@ -80,8 +80,8 @@ public class LineProtocolOutputWriter extends AbstractOutputWriter implements Ou
     private Map<String, String> localSettings = null;
     private HttpURLConnection urlConnection = null;
     private String Database = null;
-    OutputStream outputStream = null;
-    OutputStreamWriter outputStreamWriter = null;
+    private OutputStream outputStream = null;
+    private OutputStreamWriter outputStreamWriter = null;
     private LinkedList<ObjectName> objectNames = new LinkedList<ObjectName>();
     private long firstTime = 0;
     private AtomicInteger countWrite = new AtomicInteger(0);
@@ -257,7 +257,6 @@ public class LineProtocolOutputWriter extends AbstractOutputWriter implements Ou
             return;
         }
         try {
-            createDatabase();
             url = new URL(urlStr);
         } catch (MalformedURLException e) {
             e.printStackTrace();
@@ -286,11 +285,14 @@ public class LineProtocolOutputWriter extends AbstractOutputWriter implements Ou
             } catch (IOException e) {
                 throw e;
             } finally {
+                if (urlConnection.getResponseCode()==404&&urlConnection.getResponseMessage().equals("Not Found")) {
+                    logger.log(getInfoLevel(), "HttpResponseCode: " + urlConnection.getResponseCode() + "--" + urlConnection.getResponseMessage());
+                    createDatabase();
+                }
                 releaseLineProtocalConnection();
                 countWrite.set(0);
                 firstTime = currentTime;
             }
-
         }
     }
 
