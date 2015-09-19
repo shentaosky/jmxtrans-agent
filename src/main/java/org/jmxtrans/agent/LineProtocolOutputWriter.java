@@ -99,10 +99,12 @@ public class LineProtocolOutputWriter extends AbstractOutputWriter implements Ou
             ", socketConnectTimeoutInMillis=" +
             socketConnectTimeoutInMillis);
         String expcetionPath = settings.get("exceptions");
-        try {
-            buildObjectNames(expcetionPath);
-        } catch (Exception e) {
-            e.printStackTrace();
+        if (expcetionPath != null) {
+            try {
+                buildObjectNames(expcetionPath);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
         }
         firstTime = System.currentTimeMillis();
         Database = settings.get("database");
@@ -285,7 +287,7 @@ public class LineProtocolOutputWriter extends AbstractOutputWriter implements Ou
             } catch (IOException e) {
                 throw e;
             } finally {
-                if (urlConnection.getResponseCode()==404&&urlConnection.getResponseMessage().equals("Not Found")) {
+                if (urlConnection.getResponseCode() == 404 && urlConnection.getResponseMessage().equals("Not Found")) {
                     logger.log(getInfoLevel(), "HttpResponseCode: " + urlConnection.getResponseCode() + "--" + urlConnection.getResponseMessage());
                     createDatabase();
                 }
